@@ -1,4 +1,7 @@
-use std::fmt::Display;
+use std::{
+    fmt::{Debug, Display},
+    str::FromStr,
+};
 
 use serde::{de::Visitor, Deserialize, Serialize};
 
@@ -35,7 +38,41 @@ impl Ord for SemVer {
 
 impl Display for SemVer {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}.{}.{}", self.0, self.1, self.2)
+        let SemVer(x, y, z) = self;
+        write!(f, "{x}.{y}.{z}")
+    }
+}
+
+impl Debug for SemVer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("SemVer").field(&format!("{self}")).finish()
+    }
+}
+
+impl FromStr for SemVer {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let s: Vec<&str> = s.split('.').collect();
+        let len = s.len();
+        if len != 3 {
+            return Err(format!("invalid length of {len}, 3 expected"));
+        }
+        let mut err = false;
+        let r: Vec<i16> = s
+            .into_iter()
+            .map(|s| match s.parse::<i16>() {
+                Ok(x) => x,
+                Err(_) => {
+                    err = true;
+                    0
+                }
+            })
+            .collect();
+        if err {
+            return Err(format!("invalid syntax, int.int.int expected"));
+        }
+        Ok(SemVer(r[0], r[1], r[2]))
     }
 }
 
@@ -44,7 +81,7 @@ impl Serialize for SemVer {
     where
         S: serde::Serializer,
     {
-        serializer.serialize_str(&format!("{}", self))
+        serializer.serialize_str(&format!("{self}"))
     }
 }
 
@@ -126,5 +163,20 @@ impl ReqVer {
             lo: None,
             hi: Some(v),
         }
+    }
+}
+
+impl Display for ReqVer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let left = match self.lo {
+            Some(v) => format!("[{v},"),
+            None => "(,".to_string(),
+        };
+        let right = match self.hi {
+            Some(v) => format!("{v}]"),
+            None => ")".to_string(),
+        };
+        let s = left + &right;
+        write!(f, "{s}")
     }
 }
