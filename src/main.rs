@@ -12,7 +12,6 @@ use chksum_md5::chksum;
 use clap::Parser;
 use cmd::Commands;
 use pubgrub::{range::Range, version::SemanticVersion};
-use registry::OP_MC_VERSION;
 use semver::{Version, VersionReq};
 use serde::{Deserialize, Serialize};
 use tracing::{info, level_filters::LevelFilter};
@@ -122,6 +121,5 @@ fn main() -> anyhow::Result<()> {
                 .with_filter(LevelFilter::from(ARG.log_level)),
         )
         .init();
-    *OP_MC_VERSION.write().unwrap() = VersionReq::STAR;
     ARG.cmd.exec()
 }

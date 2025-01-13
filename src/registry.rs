@@ -10,7 +10,7 @@ use pubgrub::{
     solver::{Dependencies, DependencyProvider},
     version::SemanticVersion,
 };
-use semver::{Version, VersionReq};
+use semver::Version;
 
 use crate::{module::Module, to_pubgrub_range, to_pubgrub_ver, to_semver, ARG};
 
@@ -42,9 +42,11 @@ impl DependencyProvider<String, SemanticVersion> for Registry {
         let (package, range) = it.next().unwrap();
         if let Some(available) = self.query(package.borrow()) {
             let version = available
-                .keys()
+                .iter()
                 .rev()
-                .filter(|version| range.borrow().contains(&to_pubgrub_ver(&version)))
+                .filter(|(version, _)| range.borrow().contains(&to_pubgrub_ver(&version)))
+                .filter(|(_, info)| info.mc_dep.matches(&OP_MC_VERSION.read().unwrap()))
+                .map(|(v, _)| v)
                 .next();
             Ok((package, version.map(|v| to_pubgrub_ver(v))))
         } else {
@@ -96,10 +98,13 @@ impl Reg for FileRegistry {
     }
 }
 
+/// The registry used according to argument or configuration passed.
 pub static REGISTRY: LazyLock<Registry> = LazyLock::new(|| match ARG.registry.scheme() {
     "file" => Registry::File(FileRegistry::new(ARG.registry.path())),
     _ => panic!("URL scheme not supported"),
 });
 
-pub static OP_MC_VERSION: LazyLock<RwLock<VersionReq>> =
-    LazyLock::new(|| RwLock::new(VersionReq::STAR));
+/// The operating minecraft version,
+/// assign to this to make PubGrub take minecraft version requirement into consideration.
+pub static OP_MC_VERSION: LazyLock<RwLock<Version>> =
+    LazyLock::new(|| RwLock::new(Version::new(0, 0, 0)));
