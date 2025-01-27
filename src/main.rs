@@ -110,6 +110,7 @@ struct Args {
 static ARG: LazyLock<Args> = LazyLock::new(|| Args::parse());
 
 fn main() -> anyhow::Result<()> {
+    // to avoid messing up the terminal when showing prompt
     let f = filter_fn(|x| match x.module_path() {
         Some(x) => !x.starts_with("mio::poll"),
         _ => false,

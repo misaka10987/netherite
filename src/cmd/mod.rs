@@ -1,13 +1,15 @@
 mod add;
+mod install;
+mod list;
+mod prelude;
 mod remove;
 
-use add::add;
 use clap::Subcommand;
 use colored::Colorize;
-use remove::remove;
 use semver::Version;
+use std::path::PathBuf;
 
-use crate::mc;
+pub use prelude::*;
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
@@ -32,6 +34,14 @@ pub enum Commands {
         #[arg(short, long)]
         version: Option<Version>,
     },
+    /// Install a package to a minecraft instance.
+    Install {
+        /// Name ot the package.
+        #[arg(value_name = "MODID")]
+        mod_id: String,
+        #[arg(value_name = "MCINST", default_value = ".")]
+        mc_inst: PathBuf,
+    },
 }
 
 impl Commands {
@@ -40,14 +50,9 @@ impl Commands {
             Commands::List => list(),
             Commands::Add { mod_id, version } => add(mod_id, version),
             Commands::Remove { mod_id, version } => remove(mod_id, version),
-        }
+            Commands::Install { mod_id, mc_inst } => install(mod_id, Some(mc_inst)),
+        }?;
+        println!("{}", "Success".bold().green());
+        Ok(())
     }
-}
-
-fn list() -> anyhow::Result<()> {
-    println!("{}", "Minecraft Installations:".bold().italic());
-    for (name, inst) in mc::retrieve()? {
-        println!("  {name:?} - {}", inst.version);
-    }
-    Ok(())
 }

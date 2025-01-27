@@ -2,7 +2,7 @@ use std::{
     collections::{BTreeMap, HashMap},
     fs::File,
     io::Read,
-    sync::{LazyLock, RwLock},
+    sync::LazyLock,
 };
 
 use anyhow::anyhow;
@@ -43,9 +43,11 @@ impl DependencyProvider<String, SemanticVersion> for Registry {
         if let Some(available) = self.query(package.borrow()) {
             let version = available
                 .iter()
+                // so that the highest version available is selected first
                 .rev()
-                .filter(|(version, _)| range.borrow().contains(&to_pubgrub_ver(&version)))
-                .filter(|(_, info)| info.mc_dep.matches(&OP_MC_VERSION.read().unwrap()))
+                .filter(|(version, info)| {
+                    range.borrow().contains(&to_pubgrub_ver(&version)) && info.check_inst()
+                })
                 .map(|(v, _)| v)
                 .next();
             Ok((package, version.map(|v| to_pubgrub_ver(v))))
@@ -103,8 +105,3 @@ pub static REGISTRY: LazyLock<Registry> = LazyLock::new(|| match ARG.registry.sc
     "file" => Registry::File(FileRegistry::new(ARG.registry.path())),
     _ => panic!("URL scheme not supported"),
 });
-
-/// The operating minecraft version,
-/// assign to this to make PubGrub take minecraft version requirement into consideration.
-pub static OP_MC_VERSION: LazyLock<RwLock<Version>> =
-    LazyLock::new(|| RwLock::new(Version::new(0, 0, 0)));
